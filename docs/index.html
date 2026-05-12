@@ -1,1 +1,608 @@
-Hello world!
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character Sheet Chroma-Key Exporter</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111827;
+      --panel: #1f2937;
+      --panel-strong: #273449;
+      --text: #f9fafb;
+      --muted: #cbd5e1;
+      --accent: #34d399;
+      --accent-strong: #10b981;
+      --warning: #fbbf24;
+      --border: #334155;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(52, 211, 153, 0.14), transparent 32rem),
+        linear-gradient(135deg, #0f172a 0%, var(--bg) 48%, #020617 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0;
+    }
+
+    .hero {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      font-size: clamp(2rem, 5vw, 4.25rem);
+      line-height: 0.95;
+      letter-spacing: -0.055em;
+    }
+
+    .lede {
+      max-width: 760px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: rgba(31, 41, 55, 0.86);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .controls {
+      position: sticky;
+      top: 24px;
+      padding: 24px;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 14px;
+      border: 1px dashed #64748b;
+      border-radius: 16px;
+      background: #111827;
+      color: var(--muted);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .range-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    output,
+    .pill {
+      border-radius: 999px;
+      background: var(--panel-strong);
+      color: var(--text);
+      font-weight: 800;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    .status {
+      min-height: 54px;
+      margin: 0 0 22px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #111827;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status.error {
+      border-color: rgba(248, 113, 113, 0.65);
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.24);
+    }
+
+    .status.success {
+      border-color: rgba(52, 211, 153, 0.65);
+      color: #bbf7d0;
+      background: rgba(20, 83, 45, 0.24);
+    }
+
+    .status.warning {
+      border-color: rgba(251, 191, 36, 0.65);
+      color: #fde68a;
+      background: rgba(120, 53, 15, 0.24);
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #052e16;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 900;
+      transition: transform 140ms ease, filter 140ms ease, opacity 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .preview-panel {
+      padding: 24px;
+    }
+
+    .preview-header {
+      display: flex;
+      gap: 16px;
+      align-items: start;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .preview-header h2 {
+      margin-bottom: 4px;
+    }
+
+    .sheet-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.08) 75%),
+        #0f172a;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background-size: 24px 24px;
+    }
+
+    #sheetPreview {
+      display: block;
+      width: 100%;
+      max-width: 1135px;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .empty-preview {
+      display: grid;
+      min-height: 280px;
+      place-items: center;
+      padding: 32px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(110px, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .thumb {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #0f172a;
+    }
+
+    .thumb img {
+      display: block;
+      width: 100%;
+      background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.09) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.09) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.09) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.09) 75%),
+        #020617;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-size: 16px 16px;
+    }
+
+    .thumb figcaption {
+      padding: 8px 10px 10px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.76rem;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        width: min(100% - 20px, 680px);
+        padding: 28px 0;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .thumb-grid {
+        grid-template-columns: repeat(2, minmax(110px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">Character Sheet Chroma-Key Exporter</h1>
+      <p class="lede">Upload a 1135 × 604 chroma-key review sheet, remove green backgrounds in the browser, preview the transparent result, and download the 10 expression PNGs as one ZIP.</p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel controls" aria-label="Export controls">
+        <div class="control-group">
+          <label for="sourceImage">Source image</label>
+          <input id="sourceImage" type="file" accept="image/*">
+          <p class="hint">The uploaded image must match <code>docs/static/img/grid_chroma.png</code> and <code>grid_alpha.png</code>: <strong>1135 × 604 px</strong>.</p>
+        </div>
+
+        <div class="control-group">
+          <div class="range-row">
+            <label for="tolerance">Green tolerance</label>
+            <output id="toleranceValue" for="tolerance">40</output>
+          </div>
+          <input id="tolerance" type="range" min="0" max="180" step="1" value="40">
+          <p class="hint">Higher values remove pixels farther from chroma-key green <code>rgb(0, 255, 0)</code>. Use 0 for exact green only.</p>
+        </div>
+
+        <div id="status" class="status" role="status" aria-live="polite">Choose a source image to begin.</div>
+
+        <button id="downloadZip" type="button" disabled>Download ZIP</button>
+      </aside>
+
+      <section class="panel preview-panel" aria-labelledby="preview-title">
+        <div class="preview-header">
+          <div>
+            <h2 id="preview-title">Live preview</h2>
+            <p class="hint">The large preview shows the processed full sheet; thumbnails show the final ZIP slices in 5-column × 2-row order.</p>
+          </div>
+          <span id="sliceCount" class="pill">0 / 10 PNGs</span>
+        </div>
+
+        <div id="emptyPreview" class="empty-preview sheet-wrap">
+          <p>Upload a valid chroma-key sheet to see the transparent preview.</p>
+        </div>
+        <div id="sheetWrap" class="sheet-wrap" hidden>
+          <canvas id="sheetPreview" width="1135" height="604" aria-label="Processed transparent full sheet preview"></canvas>
+        </div>
+        <div id="thumbGrid" class="thumb-grid" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    const GRID_WIDTH = 1135;
+    const GRID_HEIGHT = 604;
+    const COLUMNS = 5;
+    const ROWS = 2;
+    const SLICE_WIDTH = GRID_WIDTH / COLUMNS;
+    const SLICE_HEIGHT = GRID_HEIGHT / ROWS;
+    const CHROMA_GREEN = { r: 0, g: 255, b: 0 };
+    const FILENAMES = [
+      'neutral.png',
+      'warm.png',
+      'happy.png',
+      'sad.png',
+      'afraid.png',
+      'angry.png',
+      'suspicious.png',
+      'uncanny.png',
+      'determined.png',
+      'vulnerable.png'
+    ];
+
+    const fileInput = document.querySelector('#sourceImage');
+    const toleranceInput = document.querySelector('#tolerance');
+    const toleranceValue = document.querySelector('#toleranceValue');
+    const statusBox = document.querySelector('#status');
+    const downloadButton = document.querySelector('#downloadZip');
+    const sheetPreview = document.querySelector('#sheetPreview');
+    const sheetPreviewContext = sheetPreview.getContext('2d');
+    const sheetWrap = document.querySelector('#sheetWrap');
+    const emptyPreview = document.querySelector('#emptyPreview');
+    const thumbGrid = document.querySelector('#thumbGrid');
+    const sliceCount = document.querySelector('#sliceCount');
+
+    let sourceImage = null;
+    let sourceObjectUrl = null;
+    let processedCanvas = null;
+    let pngSlices = [];
+    let previewUrls = [];
+
+    function setStatus(message, type = '') {
+      statusBox.textContent = message;
+      statusBox.className = `status${type ? ` ${type}` : ''}`;
+    }
+
+    function clearPreviewUrls() {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      previewUrls = [];
+    }
+
+    function resetOutput() {
+      clearPreviewUrls();
+      pngSlices = [];
+      processedCanvas = null;
+      downloadButton.disabled = true;
+      sliceCount.textContent = '0 / 10 PNGs';
+      thumbGrid.replaceChildren();
+      sheetPreviewContext.clearRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
+      sheetWrap.hidden = true;
+      emptyPreview.hidden = false;
+    }
+
+    function imageToBlob(canvas) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Could not create a PNG blob from the canvas.'));
+          }
+        }, 'image/png');
+      });
+    }
+
+    function removeChromaKey(image) {
+      const canvas = document.createElement('canvas');
+      canvas.width = GRID_WIDTH;
+      canvas.height = GRID_HEIGHT;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0, GRID_WIDTH, GRID_HEIGHT);
+
+      const imageData = context.getImageData(0, 0, GRID_WIDTH, GRID_HEIGHT);
+      const pixels = imageData.data;
+      const tolerance = Number(toleranceInput.value);
+
+      for (let index = 0; index < pixels.length; index += 4) {
+        const redDelta = pixels[index] - CHROMA_GREEN.r;
+        const greenDelta = pixels[index + 1] - CHROMA_GREEN.g;
+        const blueDelta = pixels[index + 2] - CHROMA_GREEN.b;
+        const distance = Math.sqrt((redDelta * redDelta) + (greenDelta * greenDelta) + (blueDelta * blueDelta));
+
+        if (distance <= tolerance) {
+          pixels[index + 3] = 0;
+        }
+      }
+
+      context.putImageData(imageData, 0, 0);
+      return canvas;
+    }
+
+    async function sliceProcessedImage(canvas) {
+      const slices = [];
+
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let column = 0; column < COLUMNS; column += 1) {
+          const outputIndex = (row * COLUMNS) + column;
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = SLICE_WIDTH;
+          sliceCanvas.height = SLICE_HEIGHT;
+          const sliceContext = sliceCanvas.getContext('2d');
+          sliceContext.drawImage(
+            canvas,
+            column * SLICE_WIDTH,
+            row * SLICE_HEIGHT,
+            SLICE_WIDTH,
+            SLICE_HEIGHT,
+            0,
+            0,
+            SLICE_WIDTH,
+            SLICE_HEIGHT
+          );
+
+          slices.push({
+            filename: FILENAMES[outputIndex],
+            blob: await imageToBlob(sliceCanvas)
+          });
+        }
+      }
+
+      return slices;
+    }
+
+    function renderPreview() {
+      sheetPreviewContext.clearRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
+      sheetPreviewContext.drawImage(processedCanvas, 0, 0);
+      sheetWrap.hidden = false;
+      emptyPreview.hidden = true;
+
+      clearPreviewUrls();
+      const fragment = document.createDocumentFragment();
+
+      pngSlices.forEach(({ filename, blob }) => {
+        const url = URL.createObjectURL(blob);
+        previewUrls.push(url);
+
+        const figure = document.createElement('figure');
+        figure.className = 'thumb';
+
+        const image = document.createElement('img');
+        image.src = url;
+        image.alt = filename;
+        image.width = SLICE_WIDTH;
+        image.height = SLICE_HEIGHT;
+
+        const caption = document.createElement('figcaption');
+        caption.textContent = filename;
+
+        figure.append(image, caption);
+        fragment.append(figure);
+      });
+
+      thumbGrid.replaceChildren(fragment);
+      sliceCount.textContent = `${pngSlices.length} / 10 PNGs`;
+    }
+
+    async function processCurrentImage() {
+      if (!sourceImage) {
+        resetOutput();
+        setStatus('Choose a source image to begin.');
+        return;
+      }
+
+      if (sourceImage.naturalWidth !== GRID_WIDTH || sourceImage.naturalHeight !== GRID_HEIGHT) {
+        resetOutput();
+        setStatus(`Invalid dimensions: uploaded image is ${sourceImage.naturalWidth} × ${sourceImage.naturalHeight} px, but this exporter requires ${GRID_WIDTH} × ${GRID_HEIGHT} px.`, 'error');
+        return;
+      }
+
+      downloadButton.disabled = true;
+      setStatus('Processing chroma key and slicing PNGs…', 'warning');
+
+      try {
+        processedCanvas = removeChromaKey(sourceImage);
+        pngSlices = await sliceProcessedImage(processedCanvas);
+        renderPreview();
+        downloadButton.disabled = false;
+        setStatus(`Ready: ${pngSlices.length} transparent PNGs generated at ${SLICE_WIDTH} × ${SLICE_HEIGHT} px each.`, 'success');
+      } catch (error) {
+        resetOutput();
+        setStatus(error.message, 'error');
+      }
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('The selected file could not be loaded as an image.'));
+        sourceObjectUrl = URL.createObjectURL(file);
+        image.src = sourceObjectUrl;
+      });
+    }
+
+    fileInput.addEventListener('change', async () => {
+      if (sourceObjectUrl) {
+        URL.revokeObjectURL(sourceObjectUrl);
+        sourceObjectUrl = null;
+      }
+
+      sourceImage = null;
+      resetOutput();
+
+      const [file] = fileInput.files;
+      if (!file) {
+        setStatus('Choose a source image to begin.');
+        return;
+      }
+
+      setStatus('Loading image…', 'warning');
+
+      try {
+        sourceImage = await loadImageFromFile(file);
+        await processCurrentImage();
+      } catch (error) {
+        resetOutput();
+        setStatus(error.message, 'error');
+      }
+    });
+
+    toleranceInput.addEventListener('input', () => {
+      toleranceValue.value = toleranceInput.value;
+      processCurrentImage();
+    });
+
+    downloadButton.addEventListener('click', async () => {
+      if (pngSlices.length !== FILENAMES.length) {
+        setStatus('Generate all 10 PNG slices before downloading.', 'error');
+        return;
+      }
+
+      if (!window.JSZip) {
+        setStatus('JSZip is not available. Check your network connection and reload this static page.', 'error');
+        return;
+      }
+
+      downloadButton.disabled = true;
+      setStatus('Building ZIP…', 'warning');
+
+      try {
+        const zip = new JSZip();
+        pngSlices.forEach(({ filename, blob }) => zip.file(filename, blob));
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = zipUrl;
+        link.download = 'character-expression-pngs.zip';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(zipUrl);
+        setStatus('ZIP download started.', 'success');
+      } catch (error) {
+        setStatus(error.message, 'error');
+      } finally {
+        downloadButton.disabled = pngSlices.length !== FILENAMES.length;
+      }
+    });
+  </script>
+</body>
+</html>
