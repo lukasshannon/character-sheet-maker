@@ -23,6 +23,10 @@
       box-sizing: border-box;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -113,6 +117,58 @@
 
     input[type="range"] {
       width: 100%;
+      accent-color: var(--accent);
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #111827;
+      color: var(--text);
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.85rem;
+    }
+
+    .grid-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label,
+    .radio-row label,
+    .checkbox-row label {
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .radio-row,
+    .checkbox-row {
+      display: flex;
+      gap: 8px;
+      align-items: start;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .radio-row input,
+    .checkbox-row input {
+      margin-top: 0.25rem;
       accent-color: var(--accent);
     }
 
@@ -291,7 +347,7 @@
   <main>
     <section class="hero" aria-labelledby="page-title">
       <h1 id="page-title">Character Sheet Chroma-Key Exporter</h1>
-      <p class="lede">Upload a 1135 × 604 chroma-key review sheet, remove green backgrounds in the browser, preview the transparent result, and download the 10 expression PNGs as one ZIP.</p>
+      <p class="lede">Upload a chroma-key review sheet, configure its grid, remove green backgrounds in the browser, preview the slice overlay, and download the expression PNGs as one ZIP.</p>
     </section>
 
     <div class="layout">
@@ -299,7 +355,77 @@
         <div class="control-group">
           <label for="sourceImage">Source image</label>
           <input id="sourceImage" type="file" accept="image/*">
-          <p class="hint">The uploaded image must match <code>docs/static/img/grid_chroma.png</code> and <code>grid_alpha.png</code>: <strong>1135 × 604 px</strong>.</p>
+          <p class="hint">Use the grid controls below to match sheets with different cell counts, margins, and gaps.</p>
+        </div>
+
+        <div class="control-group">
+          <label>Grid configuration</label>
+          <div class="grid-controls">
+            <div class="field">
+              <label for="columns">Columns</label>
+              <input id="columns" type="number" min="1" step="1" value="5">
+            </div>
+            <div class="field">
+              <label for="rows">Rows</label>
+              <input id="rows" type="number" min="1" step="1" value="2">
+            </div>
+            <div class="field">
+              <label for="cellWidth">Cell width</label>
+              <input id="cellWidth" type="number" min="1" step="0.1" value="225">
+            </div>
+            <div class="field">
+              <label for="cellHeight">Cell height</label>
+              <input id="cellHeight" type="number" min="1" step="0.1" value="300">
+            </div>
+            <div class="field">
+              <label for="offsetX">Left margin</label>
+              <input id="offsetX" type="number" min="0" step="0.1" value="0">
+            </div>
+            <div class="field">
+              <label for="offsetY">Top margin</label>
+              <input id="offsetY" type="number" min="0" step="0.1" value="0">
+            </div>
+            <div class="field">
+              <label for="gapX">Horizontal gap</label>
+              <input id="gapX" type="number" min="0" step="0.1" value="2.5">
+            </div>
+            <div class="field">
+              <label for="gapY">Vertical gap</label>
+              <input id="gapY" type="number" min="0" step="0.1" value="4">
+            </div>
+          </div>
+          <p id="expectedDimensions" class="hint">Expected source: 1135 × 604 px.</p>
+          <div class="checkbox-row">
+            <input id="allowCustomSize" type="checkbox">
+            <label for="allowCustomSize">Allow custom size / use detected image dimensions instead of strict expected-size validation.</label>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>Output names</label>
+          <div class="radio-row">
+            <input id="customNamesMode" name="namingMode" type="radio" value="custom" checked>
+            <label for="customNamesMode">Use editable filename list.</label>
+          </div>
+          <textarea id="filenameList" spellcheck="false">neutral.png
+warm.png
+happy.png
+sad.png
+afraid.png
+angry.png
+suspicious.png
+uncanny.png
+determined.png
+vulnerable.png</textarea>
+          <div class="radio-row">
+            <input id="prefixNamesMode" name="namingMode" type="radio" value="prefix">
+            <label for="prefixNamesMode">Generate names from a prefix.</label>
+          </div>
+          <div class="field">
+            <label for="filenamePrefix">Filename prefix</label>
+            <input id="filenamePrefix" type="text" value="slice">
+          </div>
+          <p class="hint">If the custom list count does not match rows × columns, generated names like <code>slice-01.png</code> are used.</p>
         </div>
 
         <div class="control-group">
@@ -320,13 +446,13 @@
         <div class="preview-header">
           <div>
             <h2 id="preview-title">Live preview</h2>
-            <p class="hint">The large preview shows the processed full sheet; thumbnails show the final ZIP slices in 5-column × 2-row order.</p>
+            <p class="hint">The large preview shows the processed full sheet with slice rectangles overlaid; thumbnails show the exact files that will be added to the ZIP.</p>
           </div>
           <span id="sliceCount" class="pill">0 / 10 PNGs</span>
         </div>
 
         <div id="emptyPreview" class="empty-preview sheet-wrap">
-          <p>Upload a valid chroma-key sheet to see the transparent preview.</p>
+          <p>Upload a valid chroma-key sheet to see the transparent preview and slice overlay.</p>
         </div>
         <div id="sheetWrap" class="sheet-wrap" hidden>
           <canvas id="sheetPreview" width="1135" height="604" aria-label="Processed transparent full sheet preview"></canvas>
@@ -338,14 +464,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script>
-    const GRID_WIDTH = 1135;
-    const GRID_HEIGHT = 604;
-    const COLUMNS = 5;
-    const ROWS = 2;
-    const SLICE_WIDTH = GRID_WIDTH / COLUMNS;
-    const SLICE_HEIGHT = GRID_HEIGHT / ROWS;
     const CHROMA_GREEN = { r: 0, g: 255, b: 0 };
-    const FILENAMES = [
+    const DEFAULT_FILENAMES = [
       'neutral.png',
       'warm.png',
       'happy.png',
@@ -369,12 +489,28 @@
     const emptyPreview = document.querySelector('#emptyPreview');
     const thumbGrid = document.querySelector('#thumbGrid');
     const sliceCount = document.querySelector('#sliceCount');
+    const expectedDimensions = document.querySelector('#expectedDimensions');
+    const gridInputs = {
+      columns: document.querySelector('#columns'),
+      rows: document.querySelector('#rows'),
+      cellWidth: document.querySelector('#cellWidth'),
+      cellHeight: document.querySelector('#cellHeight'),
+      offsetX: document.querySelector('#offsetX'),
+      offsetY: document.querySelector('#offsetY'),
+      gapX: document.querySelector('#gapX'),
+      gapY: document.querySelector('#gapY')
+    };
+    const allowCustomSizeInput = document.querySelector('#allowCustomSize');
+    const filenameListInput = document.querySelector('#filenameList');
+    const filenamePrefixInput = document.querySelector('#filenamePrefix');
+    const namingModeInputs = [...document.querySelectorAll('input[name="namingMode"]')];
 
     let sourceImage = null;
     let sourceObjectUrl = null;
     let processedCanvas = null;
     let pngSlices = [];
     let previewUrls = [];
+    let processSequence = 0;
 
     function setStatus(message, type = '') {
       statusBox.textContent = message;
@@ -386,14 +522,46 @@
       previewUrls = [];
     }
 
+    function getNumber(input, fallback = 0) {
+      const value = Number(input.value);
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    function getGridSettings() {
+      const columns = Math.max(1, Math.floor(getNumber(gridInputs.columns, 5)));
+      const rows = Math.max(1, Math.floor(getNumber(gridInputs.rows, 2)));
+      const cellWidth = Math.max(1, getNumber(gridInputs.cellWidth, 225));
+      const cellHeight = Math.max(1, getNumber(gridInputs.cellHeight, 300));
+      const offsetX = Math.max(0, getNumber(gridInputs.offsetX, 0));
+      const offsetY = Math.max(0, getNumber(gridInputs.offsetY, 0));
+      const gapX = Math.max(0, getNumber(gridInputs.gapX, 0));
+      const gapY = Math.max(0, getNumber(gridInputs.gapY, 0));
+      const sliceCountTotal = rows * columns;
+      const expectedWidth = offsetX + (columns * cellWidth) + ((columns - 1) * gapX);
+      const expectedHeight = offsetY + (rows * cellHeight) + ((rows - 1) * gapY);
+
+      return { columns, rows, cellWidth, cellHeight, offsetX, offsetY, gapX, gapY, sliceCountTotal, expectedWidth, expectedHeight };
+    }
+
+    function formatDimension(value) {
+      return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    }
+
+    function updateExpectedDimensions() {
+      const grid = getGridSettings();
+      expectedDimensions.textContent = `Expected source: ${formatDimension(grid.expectedWidth)} × ${formatDimension(grid.expectedHeight)} px from the current grid.`;
+      sliceCount.textContent = `${pngSlices.length} / ${grid.sliceCountTotal} PNGs`;
+    }
+
     function resetOutput() {
+      const grid = getGridSettings();
       clearPreviewUrls();
       pngSlices = [];
       processedCanvas = null;
       downloadButton.disabled = true;
-      sliceCount.textContent = '0 / 10 PNGs';
+      sliceCount.textContent = `0 / ${grid.sliceCountTotal} PNGs`;
       thumbGrid.replaceChildren();
-      sheetPreviewContext.clearRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
+      sheetPreviewContext.clearRect(0, 0, sheetPreview.width, sheetPreview.height);
       sheetWrap.hidden = true;
       emptyPreview.hidden = false;
     }
@@ -410,14 +578,93 @@
       });
     }
 
+    function buildSliceRectangles(grid) {
+      const rectangles = [];
+
+      for (let row = 0; row < grid.rows; row += 1) {
+        for (let column = 0; column < grid.columns; column += 1) {
+          rectangles.push({
+            x: grid.offsetX + (column * (grid.cellWidth + grid.gapX)),
+            y: grid.offsetY + (row * (grid.cellHeight + grid.gapY)),
+            width: grid.cellWidth,
+            height: grid.cellHeight,
+            row,
+            column
+          });
+        }
+      }
+
+      return rectangles;
+    }
+
+    function generatedFilenames(count) {
+      const prefix = filenamePrefixInput.value.trim() || 'slice';
+      const padding = Math.max(2, String(count).length);
+      return Array.from({ length: count }, (_, index) => `${prefix}-${String(index + 1).padStart(padding, '0')}.png`);
+    }
+
+    function currentFilenames(count) {
+      const selectedMode = namingModeInputs.find((input) => input.checked)?.value || 'custom';
+
+      if (selectedMode === 'prefix') {
+        return { filenames: generatedFilenames(count), generated: true };
+      }
+
+      const filenames = filenameListInput.value
+        .split(/\r?\n/)
+        .map((filename) => filename.trim())
+        .filter(Boolean)
+        .map((filename) => filename.toLowerCase().endsWith('.png') ? filename : `${filename}.png`);
+
+      if (filenames.length !== count) {
+        return { filenames: generatedFilenames(count), generated: true };
+      }
+
+      return { filenames, generated: false };
+    }
+
+    function validateSourceDimensions(grid, rectangles) {
+      if (!sourceImage) {
+        return { valid: false, message: 'Choose a source image to begin.' };
+      }
+
+      const expectedWidth = Math.round(grid.expectedWidth * 1000) / 1000;
+      const expectedHeight = Math.round(grid.expectedHeight * 1000) / 1000;
+      const detectedWidth = sourceImage.naturalWidth;
+      const detectedHeight = sourceImage.naturalHeight;
+
+      if (!allowCustomSizeInput.checked && (Math.abs(detectedWidth - expectedWidth) > 0.001 || Math.abs(detectedHeight - expectedHeight) > 0.001)) {
+        return {
+          valid: false,
+          message: `Invalid dimensions: uploaded image is ${detectedWidth} × ${detectedHeight} px, but the current grid expects ${formatDimension(expectedWidth)} × ${formatDimension(expectedHeight)} px. Enable custom size to use the detected image dimensions.`
+        };
+      }
+
+      const outOfBounds = rectangles.some((rect) => (
+        rect.x < 0
+        || rect.y < 0
+        || rect.x + rect.width > detectedWidth
+        || rect.y + rect.height > detectedHeight
+      ));
+
+      if (outOfBounds) {
+        return {
+          valid: false,
+          message: `The current grid extends beyond the detected ${detectedWidth} × ${detectedHeight} px image. Adjust cell size, margins, or gaps before exporting.`
+        };
+      }
+
+      return { valid: true };
+    }
+
     function removeChromaKey(image) {
       const canvas = document.createElement('canvas');
-      canvas.width = GRID_WIDTH;
-      canvas.height = GRID_HEIGHT;
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
       const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(image, 0, 0, GRID_WIDTH, GRID_HEIGHT);
+      context.drawImage(image, 0, 0);
 
-      const imageData = context.getImageData(0, 0, GRID_WIDTH, GRID_HEIGHT);
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = imageData.data;
       const tolerance = Number(toleranceInput.value);
 
@@ -436,48 +683,73 @@
       return canvas;
     }
 
-    async function sliceProcessedImage(canvas) {
+    async function sliceProcessedImage(canvas, rectangles, filenames) {
       const slices = [];
 
-      for (let row = 0; row < ROWS; row += 1) {
-        for (let column = 0; column < COLUMNS; column += 1) {
-          const outputIndex = (row * COLUMNS) + column;
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = SLICE_WIDTH;
-          sliceCanvas.height = SLICE_HEIGHT;
-          const sliceContext = sliceCanvas.getContext('2d');
-          sliceContext.drawImage(
-            canvas,
-            column * SLICE_WIDTH,
-            row * SLICE_HEIGHT,
-            SLICE_WIDTH,
-            SLICE_HEIGHT,
-            0,
-            0,
-            SLICE_WIDTH,
-            SLICE_HEIGHT
-          );
+      for (const [index, rect] of rectangles.entries()) {
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = Math.round(rect.width);
+        sliceCanvas.height = Math.round(rect.height);
+        const sliceContext = sliceCanvas.getContext('2d');
+        sliceContext.drawImage(
+          canvas,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height,
+          0,
+          0,
+          sliceCanvas.width,
+          sliceCanvas.height
+        );
 
-          slices.push({
-            filename: FILENAMES[outputIndex],
-            blob: await imageToBlob(sliceCanvas)
-          });
-        }
+        slices.push({
+          filename: filenames[index],
+          blob: await imageToBlob(sliceCanvas),
+          width: sliceCanvas.width,
+          height: sliceCanvas.height
+        });
       }
 
       return slices;
     }
 
-    function renderPreview() {
-      sheetPreviewContext.clearRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
+    function drawSliceOverlay(context, rectangles) {
+      context.save();
+      context.lineWidth = Math.max(2, Math.round(context.canvas.width / 700));
+      context.strokeStyle = '#fbbf24';
+      context.fillStyle = 'rgba(251, 191, 36, 0.12)';
+      context.font = `${Math.max(12, Math.round(context.canvas.width / 90))}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+      context.textBaseline = 'top';
+
+      rectangles.forEach((rect, index) => {
+        context.fillRect(rect.x, rect.y, rect.width, rect.height);
+        context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        const label = String(index + 1);
+        const textWidth = context.measureText(label).width;
+        context.fillStyle = 'rgba(15, 23, 42, 0.86)';
+        context.fillRect(rect.x + 4, rect.y + 4, textWidth + 10, 20);
+        context.fillStyle = '#fde68a';
+        context.fillText(label, rect.x + 9, rect.y + 6);
+        context.fillStyle = 'rgba(251, 191, 36, 0.12)';
+      });
+
+      context.restore();
+    }
+
+    function renderPreview(grid, rectangles) {
+      sheetPreview.width = processedCanvas.width;
+      sheetPreview.height = processedCanvas.height;
+      sheetPreviewContext.clearRect(0, 0, sheetPreview.width, sheetPreview.height);
       sheetPreviewContext.drawImage(processedCanvas, 0, 0);
+      drawSliceOverlay(sheetPreviewContext, rectangles);
       sheetWrap.hidden = false;
       emptyPreview.hidden = true;
 
       clearPreviewUrls();
       const fragment = document.createDocumentFragment();
 
-      pngSlices.forEach(({ filename, blob }) => {
+      pngSlices.forEach(({ filename, blob, width, height }) => {
         const url = URL.createObjectURL(blob);
         previewUrls.push(url);
 
@@ -487,8 +759,8 @@
         const image = document.createElement('img');
         image.src = url;
         image.alt = filename;
-        image.width = SLICE_WIDTH;
-        image.height = SLICE_HEIGHT;
+        image.width = width;
+        image.height = height;
 
         const caption = document.createElement('figcaption');
         caption.textContent = filename;
@@ -498,19 +770,27 @@
       });
 
       thumbGrid.replaceChildren(fragment);
-      sliceCount.textContent = `${pngSlices.length} / 10 PNGs`;
+      sliceCount.textContent = `${pngSlices.length} / ${grid.sliceCountTotal} PNGs`;
     }
 
     async function processCurrentImage() {
+      const sequence = processSequence + 1;
+      processSequence = sequence;
+      updateExpectedDimensions();
+
       if (!sourceImage) {
         resetOutput();
         setStatus('Choose a source image to begin.');
         return;
       }
 
-      if (sourceImage.naturalWidth !== GRID_WIDTH || sourceImage.naturalHeight !== GRID_HEIGHT) {
+      const grid = getGridSettings();
+      const rectangles = buildSliceRectangles(grid);
+      const validation = validateSourceDimensions(grid, rectangles);
+
+      if (!validation.valid) {
         resetOutput();
-        setStatus(`Invalid dimensions: uploaded image is ${sourceImage.naturalWidth} × ${sourceImage.naturalHeight} px, but this exporter requires ${GRID_WIDTH} × ${GRID_HEIGHT} px.`, 'error');
+        setStatus(validation.message, validation.message.startsWith('Choose') ? '' : 'error');
         return;
       }
 
@@ -518,11 +798,21 @@
       setStatus('Processing chroma key and slicing PNGs…', 'warning');
 
       try {
+        const naming = currentFilenames(grid.sliceCountTotal);
         processedCanvas = removeChromaKey(sourceImage);
-        pngSlices = await sliceProcessedImage(processedCanvas);
-        renderPreview();
+        const slices = await sliceProcessedImage(processedCanvas, rectangles, naming.filenames);
+
+        if (sequence !== processSequence) {
+          return;
+        }
+
+        pngSlices = slices;
+        renderPreview(grid, rectangles);
         downloadButton.disabled = false;
-        setStatus(`Ready: ${pngSlices.length} transparent PNGs generated at ${SLICE_WIDTH} × ${SLICE_HEIGHT} px each.`, 'success');
+
+        const namingMessage = naming.generated ? ' Generated filenames are being used.' : '';
+        const customSizeMessage = allowCustomSizeInput.checked ? ` Detected source size: ${sourceImage.naturalWidth} × ${sourceImage.naturalHeight} px.` : '';
+        setStatus(`Ready: ${pngSlices.length} transparent PNGs generated at ${formatDimension(grid.cellWidth)} × ${formatDimension(grid.cellHeight)} px each.${namingMessage}${customSizeMessage}`, naming.generated ? 'warning' : 'success');
       } catch (error) {
         resetOutput();
         setStatus(error.message, 'error');
@@ -570,9 +860,16 @@
       processCurrentImage();
     });
 
+    [...Object.values(gridInputs), allowCustomSizeInput, filenameListInput, filenamePrefixInput, ...namingModeInputs].forEach((input) => {
+      input.addEventListener('input', processCurrentImage);
+      input.addEventListener('change', processCurrentImage);
+    });
+
     downloadButton.addEventListener('click', async () => {
-      if (pngSlices.length !== FILENAMES.length) {
-        setStatus('Generate all 10 PNG slices before downloading.', 'error');
+      const grid = getGridSettings();
+
+      if (pngSlices.length !== grid.sliceCountTotal) {
+        setStatus(`Generate all ${grid.sliceCountTotal} PNG slices before downloading.`, 'error');
         return;
       }
 
@@ -596,13 +893,16 @@
         link.click();
         link.remove();
         URL.revokeObjectURL(zipUrl);
-        setStatus('ZIP download started.', 'success');
+        setStatus(`ZIP download started with ${pngSlices.length} PNG slices.`, 'success');
       } catch (error) {
         setStatus(error.message, 'error');
       } finally {
-        downloadButton.disabled = pngSlices.length !== FILENAMES.length;
+        downloadButton.disabled = pngSlices.length !== grid.sliceCountTotal;
       }
     });
+
+    filenameListInput.value = DEFAULT_FILENAMES.join('\n');
+    updateExpectedDimensions();
   </script>
 </body>
 </html>
